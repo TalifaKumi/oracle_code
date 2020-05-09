@@ -1,0 +1,712 @@
+create table DTP_REF_FIAS_NSI as
+select    AOGUID,  gid, REGIONCODE , AOLEVEL, NAM
+, decode(AOLEVEL,'1',NAM,null) R1
+, decode(AOLEVEL,'3',NAM,null) R3
+, decode(AOLEVEL,'4',NAM,null) R4
+, decode(AOLEVEL,'5',NAM,null) R5
+, decode(AOLEVEL,'6',NAM,'65',NAM, null) R6
+from
+(SELECT  DM.DIMMEMBER_GID gid,
+max(decode (DF.PHYSICAL_NAME,'NAME', DMS.VALUE, null)) NAM,
+max (decode (DF.PHYSICAL_NAME,'AOGUID', DMS.VALUE, null)) AOGUID,
+max (decode (DF.PHYSICAL_NAME,'REGIONCODE', DMS.VALUE, null)) REGIONCODE,
+max (decode (DF.PHYSICAL_NAME,'PARENTGUID', DMS.VALUE, null)) PARENTGUID, 
+max (decode (DF.PHYSICAL_NAME,'AOLEVEL', DMS.VALUE, null)) AOLEVEL
+    FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'BKD_FIAS'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('AOGUID','NAME','REGIONCODE','PARENTGUID','AOLEVEL')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y' 
+     group by DM.DIMMEMBER_GID
+          order by 1)
+START WITH PARENTGUID is null
+CONNECT BY PRIOR AOGUID = PARENTGUID;
+
+
+SELECT SYS_CONNECT_BY_PATH(NAM, '/') as Path
+FROM test_table
+WHERE id=9
+START WITH pid is null
+CONNECT BY PRIOR id = pid;
+
+
+
+create table DTP_REF_FIAS_1 as 
+select distinct dtp.REGIONCODE, regname, district, NP nsname, f.AOGUID  nsiaoguid
+from DTP_CRASH dtp
+left join DTP_REF_FIAS_NSI  f 
+on  f.REGIONCODE=dtp.REGIONCODE and (district=R3 or NP=R6)
+ 
+
+
+
+AOGUID,  gid, REGIONCODE , AOLEVEL, NAM
+
+
+select  SYS_CONNECT_BY_PATH(NAM, '/') as Path,  AOGUID,   gid, REGIONCODE 
+from
+(SELECT  DM.DIMMEMBER_GID gid,
+max(decode (DF.PHYSICAL_NAME,'NAME', DMS.VALUE, null)) NAM,
+max (decode (DF.PHYSICAL_NAME,'AOGUID', DMS.VALUE, null)) AOGUID,
+max (decode (DF.PHYSICAL_NAME,'REGIONCODE', DMS.VALUE, null)) REGIONCODE,
+max (decode (DF.PHYSICAL_NAME,'PARENTGUID', DMS.VALUE, null)) PARENTGUID
+    FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'BKD_FIAS'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('AOGUID','NAME','REGIONCODE','PARENTGUID')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y' 
+     group by DM.DIMMEMBER_GID
+          order by 1)
+START WITH PARENTGUID is null
+CONNECT BY PRIOR AOGUID = PARENTGUID;
+
+
+select distinct DTPV nsname, nsirowcode  nsrowcode
+from DTP_CRASH dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'DTP_TYPE'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.DTPV ;
+
+
+
+create table DTP_REF_CONDITION as 
+select distinct DTPV nsname, nsirowcode  nsrowcode
+from DTP_CRASH dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'DTP_TYPE'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.DTPV ;
+
+------------------------------------------------------------------------------ DOR_Z    VALUE_OF_THE_ROAD
+
+drop table DTP_REF_VALUE_OF_THE_ROAD;
+create table DTP_REF_VALUE_OF_THE_ROAD as 
+select distinct DOR_Z nsname, nsirowcode  nsrowcode
+from DTP_CRASH dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'VALUE_OF_THE_ROAD'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.DOR_Z ;
+
+_________________________________ K_UL     'STREET_CAT'
+
+drop table DTP_REF_STREET_CAT;
+create table DTP_REF_STREET_CAT  as 
+select distinct K_UL   nsname, nsirowcode  nsrowcode
+from DTP_CRASH dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'STREET_CAT'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.K_UL ;
+
+
+________________________________   OSV DTP_LIGHTING
+
+create table DTP_REF_DTP_LIGHTING as 
+select distinct   OSV    nsiname,   nsirowcode
+from DTP_CRASH dtp
+left join 
+ (SELECT gid,max(nsi_name) nsi_name,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'DTP_LIGHTING'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsi_name=dtp.OSV  ;
+
+______________________________ MOVE_CHANGES 	CHOM
+
+create table DTP_REF_CHOM  as 
+select distinct CHOM   nsiname, nsirowcode  
+from DTP_CRASH dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'CHOM'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.CHOM  where gid.nsiname is not null;
+
+______________________________  DTP_CRASH - FACTOR - CHOM_FACTORS - CHOM_FACTORS
+
+create table DTP_REF_CHOM_FACTORS  as 
+select dtp.FACTOR   nsiname, nsirowcode   
+from (
+select  substr(FACTOR,INSTR(FACTOR,'"',1,1)+1, INSTR(FACTOR,'"',1,2)-3) FACTOR from DTP_CRASH   union 
+select   substr(FACTOR,INSTR(FACTOR,'"',1,3)+1, INSTR(FACTOR,'"',1,4)-INSTR(FACTOR,'"',1,3)-1) FACTOR  from DTP_CRASH   union 
+select   substr(FACTOR,INSTR(FACTOR,'"',1,5)+1, INSTR(FACTOR,'"',1,6)-INSTR(FACTOR,'"',1,5)-1) FACTOR from DTP_CRASH   union 
+select   substr(FACTOR,INSTR(FACTOR,'"',1,7)+1, INSTR(FACTOR,'"',1,8)-INSTR(FACTOR,'"',1,7)-1) FACTOR from DTP_CRASH   union 
+select   substr(FACTOR,INSTR(FACTOR,'"',1,9)+1, INSTR(FACTOR,'"',1,10)-INSTR(FACTOR,'"',1,9)-1) FACTOR from DTP_CRASH  
+group by FACTOR) dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'CHOM_FACTORS'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.FACTOR ;
+
+
+____________________  DTP_CRASH - NDU - NDU_PDD
+
+drop table DTP_REF_NDU_PDD;
+create table DTP_REF_NDU_PDD  as 
+select dtp.NDU   nsiname, nsirowcode   
+from (
+select  substr(NDU,INSTR(NDU,'"',1,1)+1, INSTR(NDU,'"',1,2)-3) NDU from DTP_CRASH   union 
+select   substr(NDU,INSTR(NDU,'"',1,3)+1, INSTR(NDU,'"',1,4)-INSTR(NDU,'"',1,3)-1) NDU  from DTP_CRASH   union 
+select   substr(NDU,INSTR(NDU,'"',1,5)+1, INSTR(NDU,'"',1,6)-INSTR(NDU,'"',1,5)-1) NDU from DTP_CRASH   union 
+select   substr(NDU,INSTR(NDU,'"',1,7)+1, INSTR(NDU,'"',1,8)-INSTR(NDU,'"',1,7)-1) NDU from DTP_CRASH   union 
+select   substr(NDU,INSTR(NDU,'"',1,9)+1, INSTR(NDU,'"',1,10)-INSTR(NDU,'"',1,9)-1) NDU from DTP_CRASH  
+group by NDU) dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'NDU_PDD'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.NDU ;
+
+______________________________________ DTP_CRASH - OBJ_DTP - NEAR_DTP_OBJ
+
+drop table DTP_REF_NEAR_DTP_OBJ;
+create table DTP_REF_NEAR_DTP_OBJ  as 
+select dtp.OBJ_DTP   nsiname, nsirowcode   
+from (
+select  substr(OBJ_DTP,INSTR(OBJ_DTP,'"',1,1)+1, INSTR(OBJ_DTP,'"',1,2)-3) OBJ_DTP from DTP_CRASH   union 
+select   substr(OBJ_DTP,INSTR(OBJ_DTP,'"',1,3)+1, INSTR(OBJ_DTP,'"',1,4)-INSTR(OBJ_DTP,'"',1,3)-1) OBJ_DTP  from DTP_CRASH   union 
+select   substr(OBJ_DTP,INSTR(OBJ_DTP,'"',1,5)+1, INSTR(OBJ_DTP,'"',1,6)-INSTR(OBJ_DTP,'"',1,5)-1) OBJ_DTP from DTP_CRASH   union 
+select   substr(OBJ_DTP,INSTR(OBJ_DTP,'"',1,7)+1, INSTR(OBJ_DTP,'"',1,8)-INSTR(OBJ_DTP,'"',1,7)-1) OBJ_DTP from DTP_CRASH   union 
+select   substr(OBJ_DTP,INSTR(OBJ_DTP,'"',1,9)+1, INSTR(OBJ_DTP,'"',1,10)-INSTR(OBJ_DTP,'"',1,9)-1) OBJ_DTP from DTP_CRASH  
+group by OBJ_DTP) dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'NEAR_DTP_OBJ'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.OBJ_DTP ;
+     
+_____________________________________  DTP_CRASH - SDOR - ON_DTP_OBJ
+drop table DTP_REF_ON_DTP_OBJ;
+create table DTP_REF_ON_DTP_OBJ  as 
+select dtp.SDOR   nsiname, nsirowcode   
+from (
+select  substr(SDOR,INSTR(SDOR,'"',1,1)+1, INSTR(SDOR,'"',1,2)-3) SDOR from DTP_CRASH   union 
+select   substr(SDOR,INSTR(SDOR,'"',1,3)+1, INSTR(SDOR,'"',1,4)-INSTR(SDOR,'"',1,3)-1) SDOR  from DTP_CRASH   union 
+select   substr(SDOR,INSTR(SDOR,'"',1,5)+1, INSTR(SDOR,'"',1,6)-INSTR(SDOR,'"',1,5)-1) SDOR from DTP_CRASH   union 
+select   substr(SDOR,INSTR(SDOR,'"',1,7)+1, INSTR(SDOR,'"',1,8)-INSTR(SDOR,'"',1,7)-1) SDOR from DTP_CRASH   union 
+select   substr(SDOR,INSTR(SDOR,'"',1,9)+1, INSTR(SDOR,'"',1,10)-INSTR(SDOR,'"',1,9)-1) SDOR from DTP_CRASH  
+group by SDOR) dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'ON_DTP_OBJ'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.SDOR ;
+ 
+______________________________________  DTP_CRASH - SPOG - WEATHER_COND
+
+drop table DTP_REF_WEATHER_COND;
+create table DTP_REF_WEATHER_COND as 
+select dtp.SPOG   nsiname, nsirowcode   
+from (
+select  substr(SPOG,INSTR(SPOG,'"',1,1)+1, INSTR(SPOG,'"',1,2)-3) SPOG from DTP_CRASH   union 
+select   substr(SPOG,INSTR(SPOG,'"',1,3)+1, INSTR(SPOG,'"',1,4)-INSTR(SPOG,'"',1,3)-1) SPOG  from DTP_CRASH   union 
+select   substr(SPOG,INSTR(SPOG,'"',1,5)+1, INSTR(SPOG,'"',1,6)-INSTR(SPOG,'"',1,5)-1) SPOG from DTP_CRASH   union 
+select   substr(SPOG,INSTR(SPOG,'"',1,7)+1, INSTR(SPOG,'"',1,8)-INSTR(SPOG,'"',1,7)-1) SPOG from DTP_CRASH   union 
+select   substr(SPOG,INSTR(SPOG,'"',1,9)+1, INSTR(SPOG,'"',1,10)-INSTR(SPOG,'"',1,9)-1) SPOG from DTP_CRASH  
+group by SPOG) dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'WEATHER_COND'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.SPOG ;
+
+     
+  ________________________________________  DTP_CRASH_TS - T_TS - TS_TYPE
+
+
+drop table DTP_REF_TS_TYPE;
+create table DTP_REF_TS_TYPE as 
+select distinct T_TS nsname, nsirowcode  nsrowcode
+from DTP_CRASH_TS dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'TS_TYPE'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.T_TS ;
+
+_______________________________________________DTP_CRASH_TS - TS_S - LEAVIG_DTP
+
+drop table DTP_REF_T_TS;
+
+create table DTP_REF_T_TS  as 
+select distinct TS_S  nsname, nsirowcode  nsrowcode
+from DTP_CRASH_TS dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'LEAVING_DTP'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.TS_S ;
+
+
+
+
+
+____________________________________________  DTP_CRASH_TS - T_N - TS_PROB
+
+drop table DTP_REF_TS_PROB;
+create table DTP_REF_TS_PROB as 
+select dtp.T_N   nsiname, nsirowcode   
+from (
+select   case length(dp.T_N) - length(replace(dp.T_N,' , ',''))
+when 3 then  trim(substr(dp.T_N,1, INSTR(dp.T_N,' , ',1,1)))   
+else  trim(dp.T_N) end T_N    from (
+select  substr(T_N,INSTR(T_N,'"',1,1)+1, INSTR(T_N,'"',1,2)-3) T_N from DTP_CRASH_TS   union 
+select   substr(T_N,INSTR(T_N,'"',1,3)+1, INSTR(T_N,'"',1,4)-INSTR(T_N,'"',1,3)-1) T_N  from DTP_CRASH_TS   union 
+select   substr(T_N,INSTR(T_N,'"',1,5)+1, INSTR(T_N,'"',1,6)-INSTR(T_N,'"',1,5)-1) T_N from DTP_CRASH_TS   union 
+select   substr(T_N,INSTR(T_N,'"',1,7)+1, INSTR(T_N,'"',1,8)-INSTR(T_N,'"',1,7)-1) T_N from DTP_CRASH_TS   union 
+select   substr(T_N,INSTR(T_N,'"',1,9)+1, INSTR(T_N,'"',1,10)-INSTR(T_N,'"',1,9)-1) T_N from DTP_CRASH_TS  
+group by T_N ) dp  where  T_N is not null
+union  
+select   case length(dp1.T_N) - length(replace(dp1.T_N,' , ',''))
+when 3 then    trim(substr(dp1.T_N, INSTR(dp1.T_N,' , ',1,1)+3)) 
+else  trim(dp1.T_N) end T_N   from (
+select  substr(T_N,INSTR(T_N,'"',1,1)+1, INSTR(T_N,'"',1,2)-3) T_N from DTP_CRASH_TS   union 
+select   substr(T_N,INSTR(T_N,'"',1,3)+1, INSTR(T_N,'"',1,4)-INSTR(T_N,'"',1,3)-1) T_N  from DTP_CRASH_TS   union 
+select   substr(T_N,INSTR(T_N,'"',1,5)+1, INSTR(T_N,'"',1,6)-INSTR(T_N,'"',1,5)-1) T_N from DTP_CRASH_TS   union 
+select   substr(T_N,INSTR(T_N,'"',1,7)+1, INSTR(T_N,'"',1,8)-INSTR(T_N,'"',1,7)-1) T_N from DTP_CRASH_TS   union 
+select   substr(T_N,INSTR(T_N,'"',1,9)+1, INSTR(T_N,'"',1,10)-INSTR(T_N,'"',1,9)-1) T_N from DTP_CRASH_TS  
+group by T_N ) dp1 where  T_N is not null
+group by T_N ) dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'TS_PROB'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.T_N ;
+
+_____________________________________________________DTP_CRASH_TS - R_RUL - WHEEL_DTP
+
+
+drop table DTP_REF_WHEEL_DTP;
+create table DTP_REF_WHEEL_DTP as 
+select distinct R_RUL nsname, nsirowcode  nsrowcode
+from DTP_CRASH_TS dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'WHEEL_DTP'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.R_RUL ;
+
+
+_____________________________________________________DTP_CRASH_TS - O_PF - DTP_F_SOB
+
+create table DTP_REF_DTP_F_SOB as 
+select distinct O_PF  nsiname, nsirowcode  
+from DTP_CRASH_TS dtp
+left join 
+ (SELECT gid,max(nsi_name) nsi_name,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'DTP_F_SOB'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsi_name=dtp.O_PF ;
+
+     
+create table DTP_REF_DTP_F_SOB  as 
+select distinct O_PF ,  gid.DIMMEMBER_GID GID
+from DTP_CRASH_TS dtp
+left join 
+ (SELECT 
+ DM.DIMMEMBER_GID, 
+DMS.VALUE
+    FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'DTP_F_SOB'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME = 'NAME'
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') gid on upper(trim(gid.value))=upper(trim(dtp.O_PF)) 
+     where O_PF is not null;
+
+
+--------K_UCH_DTP
+
+create table DTP_REF_K_UCH_DTP  as 
+select distinct K_UCH  nsiname, nsirowcode  from DTP_CRASH_TS_UCH  dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname, max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'K_UCH_DTP'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y'  ) 
+     group by  gid) gid on gid.nsiname=dtp.K_UCH ;
+
+
+create table DTP_REF_LEAVING_DTP  as 
+select distinct S_SM nsname, nsirowcode  nsrowcode
+from DTP_CRASH_TS_UCH dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'LEAVING_DTP'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.S_SM ;
+
+
+create table DTP_REF_STEP_T  as 
+select distinct WOUND_CONS  nsname, nsirowcode  nsrowcode
+from DTP_CRASH_TS_UCH dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'STEP_TP'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.WOUND_CONS  ;
+
+
+create table DTP_REF_STEP_T  as 
+select distinct S_T  nsname, nsirowcode  nsrowcode
+from DTP_CRASH_TS_UCH dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+   FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'STEP_T'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.S_T;
+
+
+create table DTP_REF_REL_NPDD  as 
+select dtp.SOP_NPDD   nsiname, nsirowcode   
+from (
+select  substr(SOP_NPDD,INSTR(SOP_NPDD,'"',1,1)+1, INSTR(SOP_NPDD,'"',1,2)-3) SOP_NPDD from DTP_CRASH_UCHINFO   union 
+select   substr(SOP_NPDD,INSTR(SOP_NPDD,'"',1,3)+1, INSTR(SOP_NPDD,'"',1,4)-INSTR(SOP_NPDD,'"',1,3)-1) SOP_NPDD  from DTP_CRASH_UCHINFO   union 
+select   substr(SOP_NPDD,INSTR(SOP_NPDD,'"',1,5)+1, INSTR(SOP_NPDD,'"',1,6)-INSTR(SOP_NPDD,'"',1,5)-1) SOP_NPDD from DTP_CRASH_UCHINFO   union 
+select   substr(SOP_NPDD,INSTR(SOP_NPDD,'"',1,7)+1, INSTR(SOP_NPDD,'"',1,8)-INSTR(SOP_NPDD,'"',1,7)-1) SOP_NPDD from DTP_CRASH_UCHINFO   union 
+select   substr(SOP_NPDD,INSTR(SOP_NPDD,'"',1,9)+1, INSTR(SOP_NPDD,'"',1,10)-INSTR(SOP_NPDD,'"',1,9)-1) SOP_NPDD from DTP_CRASH_UCHINFO  
+group by SOP_NPDD) dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+   FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'REL_NPDD'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.SOP_NPDD;
+
+
+drop table DTP_REF_N_PDD;
+create table DTP_REF_N_PDD as 
+select dtp.NPDD   nsiname, nsirowcode   
+from (
+select   case length(dp.NPDD) - length(replace(dp.NPDD,' , ',''))
+when 3 then  trim(substr(dp.NPDD,1, INSTR(dp.NPDD,' , ',1,1)))   
+else  trim(dp.NPDD) end NPDD    from (
+select  substr(NPDD,INSTR(NPDD,'"',1,1)+1, INSTR(NPDD,'"',1,2)-3) NPDD from DTP_CRASH_UCHINFO    union 
+select   substr(NPDD,INSTR(NPDD,'"',1,3)+1, INSTR(NPDD,'"',1,4)-INSTR(NPDD,'"',1,3)-1) NPDD  from DTP_CRASH_UCHINFO    union 
+select   substr(NPDD,INSTR(NPDD,'"',1,5)+1, INSTR(NPDD,'"',1,6)-INSTR(NPDD,'"',1,5)-1) NPDD from DTP_CRASH_UCHINFO    union 
+select   substr(NPDD,INSTR(NPDD,'"',1,7)+1, INSTR(NPDD,'"',1,8)-INSTR(NPDD,'"',1,7)-1) NPDD from DTP_CRASH_UCHINFO    union 
+select   substr(NPDD,INSTR(NPDD,'"',1,9)+1, INSTR(NPDD,'"',1,10)-INSTR(NPDD,'"',1,9)-1) NPDD from DTP_CRASH_UCHINFO   
+group by NPDD ) dp  where  NPDD is not null
+union  
+select   case length(dp1.NPDD) - length(replace(dp1.NPDD,' , ',''))
+when 3 then    trim(substr(dp1.NPDD, INSTR(dp1.NPDD,' , ',1,1)+3)) 
+else  trim(dp1.NPDD) end NPDD   from (
+select  substr(NPDD,INSTR(NPDD,'"',1,1)+1, INSTR(NPDD,'"',1,2)-3) NPDD from DTP_CRASH_UCHINFO    union 
+select   substr(NPDD,INSTR(NPDD,'"',1,3)+1, INSTR(NPDD,'"',1,4)-INSTR(NPDD,'"',1,3)-1) NPDD  from DTP_CRASH_UCHINFO    union 
+select   substr(NPDD,INSTR(NPDD,'"',1,5)+1, INSTR(NPDD,'"',1,6)-INSTR(NPDD,'"',1,5)-1) NPDD from DTP_CRASH_UCHINFO    union 
+select   substr(NPDD,INSTR(NPDD,'"',1,7)+1, INSTR(NPDD,'"',1,8)-INSTR(NPDD,'"',1,7)-1) NPDD from DTP_CRASH_UCHINFO    union 
+select   substr(NPDD,INSTR(NPDD,'"',1,9)+1, INSTR(NPDD,'"',1,10)-INSTR(NPDD,'"',1,9)-1) NPDD from DTP_CRASH_UCHINFO   
+group by NPDD ) dp1 where  NPDD is not null
+group by NPDD ) dtp
+left join 
+ (SELECT gid,max(nsi_name) nsiname,max(nsi_rowcode)  nsirowcode  FROM
+(SELECT DM.DIMMEMBER_GID GID,
+case DF.PHYSICAL_NAME  WHEN 'NAME' THEN DMS.VALUE
+else null end nsi_name,
+case DF.PHYSICAL_NAME  WHEN 'ROW_CODE' THEN DMS.VALUE
+else null end nsi_rowcode
+ FROM DIMENSION D
+     INNER JOIN DIMMEMBER DM ON DM.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMFIELD DF ON DF.DIMENSION_ID = D.DIMENSION_ID
+     INNER JOIN DIMMEMBERSET DMS ON DMS.DIMMEMBER_ID = DM.DIMMEMBER_ID AND DMS.DIMFIELD_ID = DF.DIMFIELD_ID
+    WHERE
+     D.PHYSICAL_NAME = 'N_PDD'
+     AND D.SRCSTM_ID = 1
+     AND DF.PHYSICAL_NAME in ('NAME','ROW_CODE')
+     AND DM.ISACTUAL = 'Y'
+     AND DM.ISLASTRECORD = 'Y') 
+     group by  gid) gid on gid.nsiname=dtp.NPDD ;
+
+
+
